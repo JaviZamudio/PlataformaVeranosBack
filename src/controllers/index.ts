@@ -33,19 +33,19 @@ export async function createRequest(req: Request, res: Response) {
         requestData.expediente_alumno = parseInt(requestData.expediente_alumno)
         requestData.clave_materia = parseInt(requestData.clave_materia)
 
-        if(!captura){
-            return res.status(400).json({code: "NO_FILE", message: "No se ha enviado ninguna captura de pantalla."});
+        if (!captura) {
+            return res.status(400).json({ code: "NO_FILE", message: "No se ha enviado ninguna captura de pantalla." });
         }
 
         const capturaValida = await validarCaptura(captura.buffer, req.body.expediente_alumno);
 
 
-        if(!req.body.expediente_alumno){
-            return res.status(400).json({code: "INCOMPLETE_DATA", message: "Faltan los siguientes datos: Expediente."});
+        if (!req.body.expediente_alumno) {
+            return res.status(400).json({ code: "INCOMPLETE_DATA", message: "Faltan los siguientes datos: Expediente." });
         }
-    
-        if(!capturaValida){
-            return res.status(400).json({code: "INVALID_FILE", message: "La captura de pantalla es inválida."});
+
+        if (!capturaValida) {
+            return res.status(400).json({ code: "INVALID_FILE", message: "La captura de pantalla es inválida." });
         }
 
         const existingGroup = await prisma.grupo.findFirst({
@@ -127,6 +127,7 @@ export async function getGroups(req: Request, res: Response) {
             clave_materia: group.materia?.clave,
             nombre_materia: group.materia?.nombre,
             area: group.materia?.area?.nombre,
+            area_img: group.materia?.area?.url,
             horario: `${group.hora_inicio} - ${group.hora_fin}`,
             profesor: group.profesor,
             costo: group.costo,
