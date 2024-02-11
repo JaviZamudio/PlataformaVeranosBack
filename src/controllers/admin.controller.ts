@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 
 import bcrypt from 'bcrypt';
 import { JWT_SECRET } from "../configs/configs";
+import { Decimal } from "@prisma/client/runtime/library";
 const prisma = new PrismaClient();
 
 export const adminLogin = async (req: Request, res: Response) => {
@@ -14,7 +15,7 @@ export const adminLogin = async (req: Request, res: Response) => {
     //     where: {
     //         username: req.body.username
     //     },
-    //     data:{
+    //     data: {
     //         password: newPassword
     //     }
     // })
@@ -45,6 +46,7 @@ export const adminLogin = async (req: Request, res: Response) => {
         const token = jwt.sign({ id: admin.id_admin }, JWT_SECRET);
 
         return res.json({
+            code: "OK",
             message: "Login correcto.",
             data: token
         });
@@ -126,19 +128,19 @@ export async function groupInfo(req: Request, res: Response) {
             }
         });
 
-        if(!group){
-            return res.status(404).json({message: 'Grupo no encontrado.'});
+        if (!group) {
+            return res.status(404).json({ message: 'Grupo no encontrado.' });
         }
 
-        return res.status(200).json({message: 'Grupo encontrado.', data: group});
+        return res.status(200).json({ message: 'Grupo encontrado.', data: group });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Error al obtener la información de grupo' })
     }
 }
 
-export async function getRequests(req: Request, res:Response) {
-    try{
+export async function getRequests(req: Request, res: Response) {
+    try {
         const groupId = parseInt(req.params.id, 10);
 
         const existingRequests = await prisma.solicitud.findMany({
@@ -185,17 +187,149 @@ export async function getMateria(req: Request, res: Response) {
 
 export async function getAllMaterias(req: Request, res: Response) {
     try {
-        const materias = await prisma.materia.findMany({
+        const materiasResult = await prisma.materia.findMany({
             include: {
                 area: {
                     select: {
-                        nombre: true
+                        nombre: true,
+                        url: true
                     }
+                },
+                Carreras: {
+                    select: {
+                        abreviatura: true
+                    }
+                },
+                Grupos: {
+                    where: {
+                        Periodo: {
+                            activo: true
+                        }
+                    },
+                    take: 1,
+                }
+            },
+            orderBy: {
+                Grupos: {
+                    _count: "desc"
                 }
             }
         });
-        return res.status(200).json(materias);
+
+        interface GroupData {
+            clave_materia: number;
+            nombre_materia: string;
+            area: string;
+            area_img: string;
+            inscritos: number;
+            carreras: string[];
+            horario?: string;
+            profesor?: string;
+            costo?: Decimal;
+        }
+
+        interface Materia {
+            clave: string;
+            nombre: string;
+            carreras: string[];
+            grupo?: GroupData;
+        }
+
+        const materias: Materia[] = materiasResult.map(materia => {
+            return {
+                carreras: materia.Carreras.map((carrera) => carrera.abreviatura),
+                clave: materia.clave.toString(),
+                nombre: materia.nombre!,
+                grupo: materia.Grupos.length > 0 ? {
+                    clave_materia: materia.clave,
+                    nombre_materia: materia.nombre,
+                    area: materia.area.nombre,
+                    area_img: materia.area?.url,
+                    inscritos: materia.Grupos[0].inscritos,
+                    horario: materia.Grupos[0].hora_inicio && materia.Grupos[0].hora_fin ? `${materia.Grupos[0].hora_inicio} - ${materia.Grupos[0].hora_fin}` : undefined,
+                    profesor: materia.Grupos[0].profesor || undefined,
+                    costo: materia.Grupos[0].costo || undefined,
+                    carreras: materia.Carreras.map((carrera) => carrera.abreviatura),
+                } : undefined,
+            }
+        });
+
+        return res.status(200).json({ message: 'Materias encontradas', data: materias, code: "OK" });
     } catch (error) {
         res.status(500).json({ message: 'Error al obtener materias' });
+        console.error(error);
+    }
+}
+
+export async function getGroupsAdmin(req: Request, res: Response) {
+    try {
+        const groupsResult = await prisma.grupo.findMany({
+            include: {
+                materia: {
+                    include: {
+                        area: true,
+                        Carreras: true
+                    },
+                },
+            },
+            where: {
+                Periodo: {
+                    activo: true
+                }
+            }
+        });
+
+        const groups = groupsResult.map(group => {
+            return {
+                id_grupo: group.id_grupo,
+                clave_materia: group.materia?.clave,
+                nombre_materia: group.materia?.nombre,
+                area: group.materia?.area?.nombre,
+                area_img: group.materia?.area?.url,
+                inscritos: group.inscritos,
+                horario: group.hora_inicio && group.hora_fin ? `${group.hora_inicio} - ${group.hora_fin}` : "No definido",
+                carreras: group.materia?.Carreras.map((carrera) => carrera.abreviatura),
+                profesor: group.profesor || "No definido",
+                costo: group.costo || "No definido",
+            }
+        });
+
+        return res.status(200).json({ message: 'Grupos encontrados', data: groups, code: "OK" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error al obtener los grupos' });
+    }
+}
+
+export async function createGroupAdmin(req: Request, res: Response) {
+    try {
+        const { claveMateria, } = req.body;
+
+        if (!claveMateria) {
+            return res.status(400).json({ error: 'La clave de materia es obligatoria' });
+        }
+
+        const periodoActivo = await prisma.periodo.findFirst({
+            where: {
+                activo: true
+            }
+        });
+
+        if (!periodoActivo) {
+            return res.status(400).json({ error: 'No hay un periodo activo' });
+        }
+
+        const newGroup = await prisma.grupo.create({
+            data: {
+                admin_created: true,
+                clave_materia: claveMateria,
+                id_periodo: periodoActivo.id_periodo,
+            },
+        });
+
+        return res.status(201).json({ message: 'Grupo creado correctamente', data: newGroup });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error al crear el grupo' });
     }
 }

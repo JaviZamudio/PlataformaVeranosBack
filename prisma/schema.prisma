@@ -15,33 +15,34 @@ model admin {
 
 model area {
   id_area Int       @id
-  nombre  String?   @db.VarChar(100)
-  color   String?   @db.VarChar(100)
-  url     String?
+  nombre  String    @db.VarChar(100)
+  color   String    @db.VarChar(100)
+  url     String
   materia materia[]
 }
 
 model grupo {
   id_grupo      Int         @id @default(autoincrement())
-  periodo       String?     @db.VarChar(10)
   profesor      String?     @db.VarChar(200)
-  hora_inicio   DateTime?   @db.Time(6)
-  hora_fin      DateTime?   @db.Time(6)
-  inscritos     Int?        @default(0)
+  id_periodo    Int
+  hora_inicio   String? // 07:00
+  hora_fin      String? // 09:00
+  inscritos     Int         @default(0)
   costo         Decimal?    @db.Money
-  admin_created Boolean?
+  admin_created Boolean     @default(false)
   clave_materia Int?
+  Periodo       Periodo?    @relation(fields: [id_periodo], references: [id_periodo])
   materia       materia?    @relation(fields: [clave_materia], references: [clave], onDelete: NoAction, onUpdate: NoAction, map: "fk_grupo_materia")
   solicitud     solicitud[]
 }
 
 model materia {
-  clave    Int     @id
-  nombre   String? @db.VarChar(100)
-  semestre Int?    @db.SmallInt
-  id_area  Int?
-  grupo    grupo[]
-  area     area?   @relation(fields: [id_area], references: [id_area], onDelete: NoAction, onUpdate: NoAction, map: "fk_materia_area")
+  clave    Int       @id
+  nombre   String    @db.VarChar(100)
+  id_area  Int
+  Grupos   grupo[]
+  area     area      @relation(fields: [id_area], references: [id_area], onDelete: NoAction, onUpdate: NoAction, map: "fk_materia_area")
+  Carreras Carrera[]
 }
 
 model solicitud {
@@ -52,5 +53,21 @@ model solicitud {
   ap_materno        String? @db.VarChar(100)
   email_alumno      String? @db.VarChar(200)
   id_grupo          Int?
-  grupo             grupo?  @relation(fields: [id_grupo], references: [id_grupo], onDelete: NoAction, onUpdate: NoAction, map: "fk_solicitud_grupo")
+  grupo             grupo?  @relation(fields: [id_grupo], references: [id_grupo], onDelete: Cascade, onUpdate: Cascade, map: "fk_solicitud_grupo")
+}
+
+model Carrera {
+  id_carrera  Int       @id @default(autoincrement())
+  nombre      String    @db.VarChar(100) // Ingeniería de Software
+  clave       String    @db.VarChar(10) // sof18, cad22
+  abreviatura String    @db.VarChar(10) // SOF
+  Materias    materia[]
+}
+
+model Periodo {
+  id_periodo Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  nombre     String // 2024-1
+  activo     Boolean  @default(true)
+  Grupos     grupo[]
 }

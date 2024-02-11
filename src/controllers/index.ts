@@ -48,25 +48,56 @@ export async function createRequest(req: Request, res: Response) {
             return res.status(400).json({ code: "INVALID_FILE", message: "La captura de pantalla es inválida." });
         }
 
+        // Find or create group
         const existingGroup = await prisma.grupo.findFirst({
             where: {
                 clave_materia: requestData.clave_materia,
+                Periodo: {
+                    activo: true,
+                },
             },
         });
 
         let groupId;
-
         if (existingGroup) {
             groupId = existingGroup.id_grupo;
         } else {
+            const currentPeriod = await prisma.periodo.findFirst({
+                where: {
+                    activo: true,
+                },
+            });
+
+            if (!currentPeriod) {
+                return res.status(400).json({ message: 'No hay un periodo activo', code: "NO_ACTIVE_PERIOD" });
+            }
+
             const newGroup = await prisma.grupo.create({
                 data: {
                     clave_materia: requestData.clave_materia,
+                    Periodo: {
+                        connect: {
+                            id_periodo: currentPeriod.id_periodo,
+                        },
+                    },
                 },
             });
             groupId = newGroup.id_grupo;
         }
 
+        // Check if the student is already registered in the group
+        const existingRequest = await prisma.solicitud.findFirst({
+            where: {
+                expediente_alumno: requestData.expediente_alumno,
+                id_grupo: groupId,
+            },
+        });
+
+        if (existingRequest) {
+            return res.status(400).json({ message: 'El alumno ya está inscrito en este grupo', code: "ALREADY_REGISTERED" });
+        }
+
+        // Create the request
         const newRequest = await prisma.solicitud.create({
             data: {
                 expediente_alumno: requestData.expediente_alumno,
@@ -78,6 +109,7 @@ export async function createRequest(req: Request, res: Response) {
             },
         });
 
+        // Increment the group's inscritos count
         await prisma.grupo.update({
             where: {
                 id_grupo: groupId,
@@ -89,10 +121,10 @@ export async function createRequest(req: Request, res: Response) {
             },
         });
 
-        return res.status(201).json({ message: 'Solicitud creada correctamente', data: { id: newRequest.id_solicitud } });
+        return res.status(201).json({ message: 'Solicitud creada correctamente', data: { id: newRequest.id_solicitud }, code: "OK" });
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Error al crear la solicitud' });
+        return res.status(500).json({ message: 'Error al crear la solicitud', code: "INTERNAL_ERROR" });
     }
 }
 
@@ -109,7 +141,7 @@ export async function getGroups(req: Request, res: Response) {
                     },
                     {
                         inscritos: {
-                            gte: 5,
+                            gte: 3,
                         },
                     },
                 ],
@@ -118,6 +150,7 @@ export async function getGroups(req: Request, res: Response) {
                 materia: {
                     include: {
                         area: true,
+                        Carreras: true,
                     },
                 },
             },
@@ -128,9 +161,13 @@ export async function getGroups(req: Request, res: Response) {
             nombre_materia: group.materia?.nombre,
             area: group.materia?.area?.nombre,
             area_img: group.materia?.area?.url,
-            horario: `${group.hora_inicio} - ${group.hora_fin}`,
-            profesor: group.profesor,
-            costo: group.costo,
+            inscritos: group.inscritos,
+            // format dates as HH:MM - HH:MM
+            // horario: group.hora_inicio && group.hora_fin ? `${group.hora_inicio.toUTCString().slice(17, 22)} - ${group.hora_fin.toUTCString().slice(17, 22)}` : "No definido",
+            horario: group.hora_inicio && group.hora_fin ? `${group.hora_inicio} - ${group.hora_fin}` : "No definido",
+            carreras: group.materia?.Carreras.map((carrera) => carrera.abreviatura),
+            profesor: group.profesor || "No definido",
+            costo: group.costo || "No definido",
         }));
 
         return res.status(200).json(formattedGroups);
