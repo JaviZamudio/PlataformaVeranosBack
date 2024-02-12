@@ -83,35 +83,21 @@ async function createGroup(groupData: Omit<grupo, 'id_grupo'>, claveMateria: num
 
 export async function updateGroup(req: Request, res: Response) {
     try {
-        const groupId = parseInt(req.params.id, 10);
+        const groupId = parseInt(req.params.id);
         const updatedData = req.body;
-        const claveMateria = updatedData.clave_materia;
-
-        if (!claveMateria) {
-            return res.status(400).json({ error: 'La clave de materia es obligatoria' });
-        }
-
-        const existingGroup = await prisma.grupo.findUnique({
-            where: { id_grupo: groupId },
-        });
-
-        if (!existingGroup) {
-            const groupData = { ...updatedData, id_grupo: undefined };
-            const newGroup = await createGroup(groupData, claveMateria);
-
-            if (newGroup.error) {
-                return res.status(400).json({ error: newGroup.error });
-            }
-
-            return res.status(201).json({ message: 'Grupo creado correctamente', data: newGroup });
-        }
 
         const updatedGroup = await prisma.grupo.update({
             where: { id_grupo: groupId },
-            data: updatedData,
+            data: {
+                admin_created: true,
+                costo: updatedData.costo,
+                profesor: updatedData.profesor,
+                hora_inicio: updatedData.hora_inicio,
+                hora_fin: updatedData.hora_fin,
+            },
         });
 
-        return res.status(200).json({ message: 'Grupo actualizado correctamente', data: updatedGroup });
+        return res.status(200).json({ message: 'Grupo actualizado correctamente', data: updatedGroup, code: "OK" });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Error al actualizar el grupo' });
@@ -124,7 +110,8 @@ export async function groupInfo(req: Request, res: Response) {
         const group = await prisma.grupo.findUnique({
             where: { id_grupo: groupId },
             include: {
-                solicitud: true
+                solicitud: true,
+                materia: true
             }
         });
 
@@ -132,7 +119,7 @@ export async function groupInfo(req: Request, res: Response) {
             return res.status(404).json({ message: 'Grupo no encontrado.' });
         }
 
-        return res.status(200).json({ message: 'Grupo encontrado.', data: group });
+        return res.status(200).json({ message: 'Grupo encontrado.', data: group, code: "OK" });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Error al obtener la información de grupo' })
@@ -217,6 +204,7 @@ export async function getAllMaterias(req: Request, res: Response) {
         });
 
         interface GroupData {
+            grupo_id: number;
             clave_materia: number;
             nombre_materia: string;
             area: string;
@@ -241,6 +229,7 @@ export async function getAllMaterias(req: Request, res: Response) {
                 clave: materia.clave.toString(),
                 nombre: materia.nombre!,
                 grupo: materia.Grupos.length > 0 ? {
+                    grupo_id: materia.Grupos[0].id_grupo,
                     clave_materia: materia.clave,
                     nombre_materia: materia.nombre,
                     area: materia.area.nombre,

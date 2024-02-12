@@ -11,7 +11,7 @@ adminRouter.get('/', auth, getAdmins);
 adminRouter.get('/groups', auth, getGroupsAdmin);
 adminRouter.post('/groups', auth, getGroupsAdmin);
 adminRouter.get('/groups/:id', groupInfo);
-adminRouter.patch('/groups/:id', updateGroup);
+adminRouter.patch('/groups/:id', auth, updateGroup);
 adminRouter.post('/login', adminLogin);
 adminRouter.get('/grupos/:id/solicitudes', getRequests);
 adminRouter.get('/materias/:id', getMateria);
