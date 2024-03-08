@@ -204,6 +204,13 @@ export async function getAllMaterias(req: Request, res: Response) {
             }
         });
 
+        materiasResult.sort((a, b) => {
+            if (a.Grupos.length > 0 && b.Grupos.length > 0) {
+                return b.Grupos[0].inscritos - a.Grupos[0].inscritos;
+            }
+            return 0;
+        });
+
         interface GroupData {
             grupo_id: number;
             clave_materia: number;

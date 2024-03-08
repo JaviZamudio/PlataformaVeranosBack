@@ -74,12 +74,8 @@ export async function createRequest(req: Request, res: Response) {
 
             const newGroup = await prisma.grupo.create({
                 data: {
-                    clave_materia: requestData.clave_materia,
-                    Periodo: {
-                        connect: {
-                            id_periodo: currentPeriod.id_periodo,
-                        },
-                    },
+                    clave_materia: Number(requestData.clave_materia),
+                    id_periodo: currentPeriod.id_periodo,
                 },
             });
             groupId = newGroup.id_grupo;

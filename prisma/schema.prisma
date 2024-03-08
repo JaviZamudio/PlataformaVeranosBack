@@ -30,7 +30,7 @@ model grupo {
   inscritos     Int         @default(0)
   costo         Decimal?    @db.Money
   admin_created Boolean     @default(false)
-  clave_materia Int?
+  clave_materia Int
   Periodo       Periodo?    @relation(fields: [id_periodo], references: [id_periodo])
   materia       materia?    @relation(fields: [clave_materia], references: [clave], onDelete: NoAction, onUpdate: NoAction, map: "fk_grupo_materia")
   solicitud     solicitud[]
