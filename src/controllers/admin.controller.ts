@@ -179,7 +179,8 @@ export async function getAllMaterias(req: Request, res: Response) {
                 area: {
                     select: {
                         nombre: true,
-                        url: true
+                        url: true,
+                        id_area: true
                     }
                 },
                 Carreras: {
@@ -198,7 +199,7 @@ export async function getAllMaterias(req: Request, res: Response) {
             },
             orderBy: {
                 Grupos: {
-                    _count: "desc"
+                    _count: 'desc'
                 }
             }
         });
@@ -221,6 +222,7 @@ export async function getAllMaterias(req: Request, res: Response) {
             nombre: string;
             carreras: string[];
             grupo?: GroupData;
+            area_id: number;
         }
 
         const materias: Materia[] = materiasResult.map(materia => {
@@ -228,6 +230,7 @@ export async function getAllMaterias(req: Request, res: Response) {
                 carreras: materia.Carreras.map((carrera) => carrera.abreviatura),
                 clave: materia.clave.toString(),
                 nombre: materia.nombre!,
+                area_id: materia.area.id_area,
                 grupo: materia.Grupos.length > 0 ? {
                     grupo_id: materia.Grupos[0].id_grupo,
                     clave_materia: materia.clave,
@@ -292,7 +295,7 @@ export async function getGroupsAdmin(req: Request, res: Response) {
 
 export async function createGroupAdmin(req: Request, res: Response) {
     try {
-        const { claveMateria, } = req.body;
+        const { claveMateria, costo, profesor, hora_inicio, hora_fin } = req.body;
 
         if (!claveMateria) {
             return res.status(400).json({ error: 'La clave de materia es obligatoria' });
@@ -308,17 +311,107 @@ export async function createGroupAdmin(req: Request, res: Response) {
             return res.status(400).json({ error: 'No hay un periodo activo' });
         }
 
+        const existingGroup = await prisma.grupo.findFirst({
+            where: {
+                clave_materia: claveMateria,
+                id_periodo: periodoActivo.id_periodo
+            }
+        });
+
+        if (existingGroup) {
+            return res.status(400).json({ message: 'Ya existe un grupo con la clave de materia especificada' });
+        }
+
         const newGroup = await prisma.grupo.create({
             data: {
                 admin_created: true,
                 clave_materia: claveMateria,
+                costo: costo,
+                profesor: profesor,
+                hora_inicio: hora_inicio,
+                hora_fin: hora_fin,
                 id_periodo: periodoActivo.id_periodo,
             },
         });
 
-        return res.status(201).json({ message: 'Grupo creado correctamente', data: newGroup });
+        return res.status(201).json({ message: 'Grupo creado correctamente', data: newGroup, code: "OK" });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Error al crear el grupo' });
+    }
+}
+
+// PERIODOS
+export async function getPeriodos(req: Request, res: Response) {
+    try {
+        const periodos = await prisma.periodo.findMany({
+            orderBy: {
+                id_periodo: 'desc'
+            }
+        });
+
+        return res.status(200).json({ message: 'Periodos encontrados', data: periodos, code: "OK" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error al obtener los periodos' });
+    }
+}
+
+export async function createPeriodo(req: Request, res: Response) {
+    try {
+        const currentDate = new Date();
+        const nombre = `verano_${currentDate.getFullYear()}`;
+
+        const existingPeriodo = await prisma.periodo.findFirst({
+            where: {
+                nombre: nombre
+            }
+        });
+
+        const newPeriodo = await prisma.periodo.create({
+            data: {
+                nombre: nombre,
+                activo: true
+            },
+        });
+
+        // deactivate previous periods
+        await prisma.periodo.updateMany({
+            where: {
+                id_periodo: {
+                    not: newPeriodo.id_periodo
+                }
+            },
+            data: {
+                activo: false
+            }
+        });
+
+        return res.status(201).json({ message: 'Periodo creado correctamente', data: newPeriodo, code: "OK" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error al crear el periodo' });
+    }
+}
+
+export async function updatePeriodo(req: Request, res: Response) {
+    try {
+        const latestPeriodo = await prisma.periodo.findFirst({
+            where: {
+                activo: true
+            }
+        });
+
+        const updatedPeriodo = await prisma.periodo.update({
+            where: { id_periodo: latestPeriodo?.id_periodo },
+            data: {
+                activo: !latestPeriodo?.activo
+            },
+        });
+
+        return res.status(200).json({ message: 'Periodo actualizado correctamente', data: updatedPeriodo, code: "OK" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Error al actualizar el periodo' });
     }
 }

@@ -145,6 +145,9 @@ export async function getGroups(req: Request, res: Response) {
                         },
                     },
                 ],
+                Periodo: {
+                    activo: true,
+                },
             },
             include: {
                 materia: {
@@ -157,8 +160,8 @@ export async function getGroups(req: Request, res: Response) {
         });
 
         const formattedGroups = groups.map((group) => ({
-            clave_materia: group.materia?.clave,
-            nombre_materia: group.materia?.nombre,
+            clave_materia: group.materia!.clave,
+            nombre_materia: group.materia!.nombre,
             area: group.materia?.area?.nombre,
             area_img: group.materia?.area?.url,
             inscritos: group.inscritos,
@@ -168,9 +171,10 @@ export async function getGroups(req: Request, res: Response) {
             carreras: group.materia?.Carreras.map((carrera) => carrera.abreviatura),
             profesor: group.profesor || "No definido",
             costo: group.costo || "No definido",
+            area_id: group.materia!.area!.id_area,
         }));
 
-        return res.status(200).json(formattedGroups);
+        return res.status(200).json({ code: "OK", data: formattedGroups });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Error al obtener los grupos' });
