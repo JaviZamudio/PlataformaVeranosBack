@@ -110,7 +110,11 @@ export async function groupInfo(req: Request, res: Response) {
         const group = await prisma.grupo.findUnique({
             where: { id_grupo: groupId },
             include: {
-                Solicitudes: true,
+                materia: {
+                    select: {
+                        nombre: true,
+                    }
+                }
             }
         });
 

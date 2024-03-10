@@ -21,7 +21,7 @@ export async function createRequest(req: Request, res: Response) {
         const requestData = req.body
         const captura = req.file;
 
-        const requiredFields = ['expediente_alumno', 'nombre_alumno', 'ap_paterno', 'ap_materno', 'email_alumno', 'clave_materia'];
+        const requiredFields = ['expediente_alumno', 'nombre_alumno', 'ap_paterno', 'ap_materno', 'email_alumno', 'clave_materia', 'telefono_alumno'];
 
         for (const field of requiredFields) {
             if (!(field in requestData) || requestData[field] === null || requestData[field] === undefined) {
@@ -102,6 +102,7 @@ export async function createRequest(req: Request, res: Response) {
                 ap_paterno: requestData.ap_paterno,
                 ap_materno: requestData.ap_materno,
                 email_alumno: requestData.email_alumno,
+                telefono_alumno: requestData.telefono_alumno,
                 id_grupo: groupId,
             },
         });
