@@ -211,17 +211,21 @@ export async function getAllMaterias(req: Request, res: Response) {
                     take: 1,
                 }
             },
-            orderBy: {
-                Grupos: {
-                    _count: 'desc'
-                }
-            }
         });
 
         materiasResult.sort((a, b) => {
             if (a.Grupos.length > 0 && b.Grupos.length > 0) {
                 return b.Grupos[0].inscritos - a.Grupos[0].inscritos;
             }
+
+            if (a.Grupos.length === 0) {
+                return 1;
+            }
+
+            if (b.Grupos.length === 0) {
+                return -1;
+            }
+
             return 0;
         });
 
