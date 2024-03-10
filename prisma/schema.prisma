@@ -33,7 +33,7 @@ model grupo {
   clave_materia Int
   Periodo       Periodo?    @relation(fields: [id_periodo], references: [id_periodo])
   materia       materia?    @relation(fields: [clave_materia], references: [clave], onDelete: NoAction, onUpdate: NoAction, map: "fk_grupo_materia")
-  solicitud     solicitud[]
+  Solicitudes   solicitud[]
 }
 
 model materia {
@@ -47,13 +47,14 @@ model materia {
 
 model solicitud {
   id_solicitud      Int     @id @default(autoincrement())
-  expediente_alumno Int?
-  nombre_alumno     String? @db.VarChar(100)
-  ap_paterno        String? @db.VarChar(100)
+  expediente_alumno Int
+  nombre_alumno     String  @db.VarChar(100)
+  ap_paterno        String  @db.VarChar(100)
   ap_materno        String? @db.VarChar(100)
-  email_alumno      String? @db.VarChar(200)
-  id_grupo          Int?
-  grupo             grupo?  @relation(fields: [id_grupo], references: [id_grupo], onDelete: Cascade, onUpdate: Cascade, map: "fk_solicitud_grupo")
+  email_alumno      String  @db.VarChar(200)
+  telefono_alumno   String? @db.VarChar(20)
+  id_grupo          Int
+  grupo             grupo   @relation(fields: [id_grupo], references: [id_grupo], onDelete: Cascade, onUpdate: Cascade, map: "fk_solicitud_grupo")
 }
 
 model Carrera {

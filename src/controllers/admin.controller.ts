@@ -110,8 +110,7 @@ export async function groupInfo(req: Request, res: Response) {
         const group = await prisma.grupo.findUnique({
             where: { id_grupo: groupId },
             include: {
-                solicitud: true,
-                materia: true
+                Solicitudes: true,
             }
         });
 
@@ -128,18 +127,20 @@ export async function groupInfo(req: Request, res: Response) {
 
 export async function getRequests(req: Request, res: Response) {
     try {
-        const groupId = parseInt(req.params.id, 10);
+        const groupId = parseInt(req.params.id);
 
         const existingRequests = await prisma.solicitud.findMany({
-            where: { id_grupo: groupId }
+            where: { id_grupo: groupId },
+            select: {
+                nombre_alumno: true,
+                ap_paterno: true,
+                expediente_alumno: true,
+                email_alumno: true,
+                telefono_alumno: true,
+            }
         });
 
-        if (existingRequests.length == 0) {
-            return res.status(400).json({ error: 'No existe ninguna solicitud para el grupo ingresado' });
-        }
-
-        return res.status(200).json(existingRequests);
-
+        return res.status(200).json({ message: 'Solicitudes encontradas', data: existingRequests, code: "OK" });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Error al obtener las solicitudes' })
@@ -148,14 +149,23 @@ export async function getRequests(req: Request, res: Response) {
 
 export async function getMateria(req: Request, res: Response) {
     try {
-        const materiaId = parseInt(req.params.id, 10);
+        const materiaId = parseInt(req.params.id);
 
         const existingMateria = await prisma.materia.findFirst({
             where: { clave: materiaId },
             include: {
-                area: {
-                    select: {
-                        nombre: true
+                Grupos: {
+                    where: {
+                        Periodo: {
+                            activo: true
+                        }
+                    },
+                    orderBy: {
+                        id_grupo: 'desc'
+                    },
+                    take: 1,
+                    include: {
+                        Solicitudes: true
                     }
                 }
             }

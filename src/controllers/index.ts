@@ -30,19 +30,20 @@ export async function createRequest(req: Request, res: Response) {
         }
 
         //Parsear datos al tipo correcto.
-        requestData.expediente_alumno = parseInt(requestData.expediente_alumno)
+        const expedienteAlumno = parseInt(requestData.expediente_alumno)
         requestData.clave_materia = parseInt(requestData.clave_materia)
 
         if (!captura) {
             return res.status(400).json({ code: "NO_FILE", message: "No se ha enviado ninguna captura de pantalla." });
         }
 
-        const capturaValida = await validarCaptura(captura.buffer, req.body.expediente_alumno);
-
-
-        if (!req.body.expediente_alumno) {
-            return res.status(400).json({ code: "INCOMPLETE_DATA", message: "Faltan los siguientes datos: Expediente." });
+        if (!expedienteAlumno || isNaN(expedienteAlumno)) {
+            return res.status(400).json({ code: "INVALID_EXPEDIENTE", message: "El expediente del alumno es inválido." });
         }
+
+        // TODO: Enable this when the service is ready
+        // const capturaValida = await validarCaptura(captura.buffer, expedienteAlumno.toString());
+        const capturaValida = true;
 
         if (!capturaValida) {
             return res.status(400).json({ code: "INVALID_FILE", message: "La captura de pantalla es inválida." });
@@ -84,7 +85,7 @@ export async function createRequest(req: Request, res: Response) {
         // Check if the student is already registered in the group
         const existingRequest = await prisma.solicitud.findFirst({
             where: {
-                expediente_alumno: requestData.expediente_alumno,
+                expediente_alumno: expedienteAlumno,
                 id_grupo: groupId,
             },
         });
@@ -96,7 +97,7 @@ export async function createRequest(req: Request, res: Response) {
         // Create the request
         const newRequest = await prisma.solicitud.create({
             data: {
-                expediente_alumno: requestData.expediente_alumno,
+                expediente_alumno: expedienteAlumno,
                 nombre_alumno: requestData.nombre_alumno,
                 ap_paterno: requestData.ap_paterno,
                 ap_materno: requestData.ap_materno,
