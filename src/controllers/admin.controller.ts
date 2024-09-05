@@ -34,7 +34,29 @@ export const adminLogin = async (req: Request, res: Response) => {
         });
 
         if (!admin) {
-            return res.status(404).json({ message: "Admin no encontrado." });
+            // get all admins, if no admin add it with its password
+            const allAdmins = await prisma.admin.findMany();
+
+            if (allAdmins.length > 0) {
+                return res.status(404).json({ message: "Admin no encontrado." });
+            }
+
+            const newPassword = bcrypt.hashSync(password, 10);
+
+            const newAdmin = await prisma.admin.create({
+                data: {
+                    username: username,
+                    password: newPassword
+                }
+            });
+
+            const token = jwt.sign({ id: newAdmin.id_admin }, JWT_SECRET);
+
+            return res.json({
+                code: "OK",
+                message: "Login correcto.",
+                data: token
+            });
         }
 
         const isValidPass = bcrypt.compareSync(password, admin.password!);
